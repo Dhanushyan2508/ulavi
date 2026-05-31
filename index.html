@@ -1,0 +1,2800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="theme-color" content="#0a0f1e"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>CardSnap — Business Card Scanner</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #f0f4f8;
+  --surface: #ffffff;
+  --surface2: #f7f9fc;
+  --border: #e2e8f0;
+  --border2: #cbd5e1;
+  --accent: #2563eb;
+  --accent-light: #eff6ff;
+  --accent2: #16a34a;
+  --accent2-light: #f0fdf4;
+  --accent3: #f97316;
+  --accent3-light: #fff7ed;
+  --accent4: #7c3aed;
+  --accent4-light: #f5f3ff;
+  --text: #0f172a;
+  --text2: #475569;
+  --text3: #94a3b8;
+  --success: #16a34a;
+  --warning: #d97706;
+  --error: #dc2626;
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 24px rgba(0,0,0,0.10);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* ===== LAYOUT ===== */
+#app { max-width: 480px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); }
+
+/* ===== HEADER ===== */
+.app-header {
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+}
+.app-logo { display: flex; align-items: center; gap: 10px; }
+.app-logo-icon {
+  width: 36px; height: 36px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.app-logo-text { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+.online-chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  background: var(--accent2-light);
+  border-radius: 20px;
+  font-size: 12px; font-weight: 600; color: var(--success);
+}
+.online-chip.offline { background: #fef2f2; color: var(--error); }
+.online-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+.online-chip.offline .online-dot { background: var(--error); }
+
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.icon-btn {
+  width: 36px; height: 36px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text2);
+  transition: all 0.15s;
+  position: relative;
+}
+.icon-btn:active { transform: scale(0.93); background: var(--border); }
+.badge {
+  position: absolute; top: -4px; right: -4px;
+  background: var(--error); color: white;
+  font-size: 9px; font-weight: 700;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--surface);
+}
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-around;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+  z-index: 100;
+}
+.nav-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600; color: var(--text3);
+  cursor: pointer; transition: color 0.15s; padding: 4px 0;
+}
+.nav-tab.active { color: var(--accent); }
+.nav-tab svg { transition: all 0.15s; }
+.nav-tab.active svg { stroke: var(--accent); }
+
+/* Center FAB */
+.nav-fab {
+  width: 52px; height: 52px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(37,99,235,0.4);
+  cursor: pointer; transition: all 0.15s;
+  margin-top: -20px;
+}
+.nav-fab:active { transform: scale(0.93); }
+
+/* ===== SCREENS ===== */
+.screen { flex: 1; display: none; flex-direction: column; overflow-y: auto; padding-bottom: 90px; }
+.screen.active { display: flex; }
+
+/* ===== SCREEN 1: SCAN ===== */
+.scan-page-header { padding: 24px 20px 8px; }
+.scan-page-header h1 { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+.scan-page-header p { font-size: 14px; color: var(--text2); margin-top: 4px; }
+
+.scan-card-zone {
+  margin: 14px 20px;
+  aspect-ratio: 1.65;
+  background: #1e293b;
+  border-radius: var(--radius);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  cursor: pointer; transition: all 0.2s;
+  position: relative; overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+.scan-card-zone:active { transform: scale(0.99); }
+.scan-card-zone img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius); }
+.scan-zone-inner { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.scan-zone-icon {
+  width: 56px; height: 56px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.scan-zone-text { text-align: center; color: rgba(255,255,255,0.6); font-size: 14px; font-weight: 500; }
+
+.scan-btns { display: flex; gap: 12px; padding: 0 20px; }
+.btn-primary {
+  flex: 1; padding: 15px;
+  background: var(--accent);
+  border: none; border-radius: var(--radius-sm);
+  color: white; font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 4px 16px rgba(37,99,235,0.3);
+}
+.btn-primary:active { transform: scale(0.98); }
+.btn-upload {
+  flex: 1; padding: 15px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--accent); font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-upload:active { background: var(--accent-light); }
+
+/* Feature cards */
+.features-section { padding: 24px 20px 0; }
+.features-label { font-size: 12px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+.features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.feature-card {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.feature-card.blue  { background: #eff6ff; }
+.feature-card.green { background: #f0fdf4; }
+.feature-card.amber { background: #fffbeb; }
+.feature-card.purple{ background: #f5f3ff; }
+.feature-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 10px;
+}
+.feature-icon.blue  { background: var(--accent); }
+.feature-icon.green { background: #16a34a; }
+.feature-icon.amber { background: #f97316; }
+.feature-icon.purple{ background: #7c3aed; }
+.feature-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.feature-desc  { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+/* ===== SCREEN 2: REVIEW ===== */
+.review-page-header { padding: 24px 20px 12px; }
+.review-page-header h2 { font-size: 22px; font-weight: 700; }
+.review-page-header p  { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+.card-preview-strip {
+  margin: 0 20px 14px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  max-height: 150px; position: relative;
+  background: #1e293b;
+}
+.card-preview-strip img { width: 100%; object-fit: cover; display: block; }
+.card-preview-strip .no-img {
+  height: 110px; display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.3); font-size: 13px;
+}
+.confidence-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 6px 12px; background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  font-size: 11px; color: white; display: flex; align-items: center; gap: 6px;
+}
+.conf-dots { display: flex; gap: 3px; }
+.conf-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+.conf-dot.filled { background: #4ade80; }
+
+.dup-banner {
+  margin: 0 20px 12px;
+  padding: 10px 14px;
+  background: #fef3c7; border: 1px solid #fcd34d;
+  border-radius: var(--radius-xs);
+  font-size: 13px; color: #92400e;
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.dup-banner.hidden { display: none; }
+
+.form-section { padding: 0 20px; display: flex; flex-direction: column; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text2); }
+.form-input {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 12px 14px;
+  color: var(--text); font-size: 15px;
+  transition: border-color 0.15s; outline: none; width: 100%;
+}
+.form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.form-input.warn  { border-color: var(--warning); }
+.form-input.error { border-color: var(--error); }
+.field-hint { font-size: 11px; display: flex; align-items: center; gap: 5px; }
+.field-hint.warn  { color: var(--warning); }
+.field-hint.error { color: var(--error); }
+.field-hint.ok    { color: var(--success); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.event-tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.event-tag {
+  padding: 5px 12px; border: 1.5px solid var(--border);
+  border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--text2);
+  cursor: pointer; transition: all 0.15s; background: var(--surface);
+}
+.event-tag.selected { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+.review-actions { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+.btn-save {
+  width: 100%; padding: 16px;
+  background: var(--accent);
+  border: none; border-radius: var(--radius-sm);
+  color: white; font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s;
+  box-shadow: 0 4px 16px rgba(37,99,235,0.3);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-save:active { transform: scale(0.98); }
+.btn-discard {
+  width: 100%; padding: 13px;
+  background: transparent; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text2); font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-discard:hover { border-color: var(--error); color: var(--error); }
+
+/* ===== SCREEN 3: CONTACTS ===== */
+.contacts-header { padding: 20px 20px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.contacts-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.contacts-title-row h2 { font-size: 22px; font-weight: 700; }
+.count-chip {
+  padding: 4px 10px; background: var(--accent-light);
+  border-radius: 20px; font-size: 12px; font-weight: 700; color: var(--accent);
+}
+.search-box {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: var(--radius-xs); padding: 10px 14px;
+  transition: border-color 0.15s;
+}
+.search-box:focus-within { border-color: var(--accent); }
+.search-box input { flex: 1; background: none; border: none; outline: none; color: var(--text); font-size: 14px; }
+.search-box input::placeholder { color: var(--text3); }
+
+.filter-row { display: flex; gap: 8px; overflow-x: auto; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border); scrollbar-width: none; }
+.filter-row::-webkit-scrollbar { display: none; }
+.filter-chip {
+  padding: 6px 14px; background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--text2);
+  cursor: pointer; white-space: nowrap; transition: all 0.15s;
+}
+.filter-chip.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+
+.stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; padding: 14px 20px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; text-align: center; box-shadow: var(--shadow); }
+.stat-num { font-size: 24px; font-weight: 800; color: var(--accent); }
+.stat-num.green  { color: var(--success); }
+.stat-num.amber  { color: var(--warning); }
+.stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+.contacts-list { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+
+.contact-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 14px 16px;
+  display: flex; align-items: center; gap: 14px;
+  cursor: pointer; transition: all 0.15s; box-shadow: var(--shadow);
+}
+.contact-card:active { transform: scale(0.99); background: var(--surface2); }
+.contact-avatar {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 16px; flex-shrink: 0; color: white;
+}
+.contact-info { flex: 1; min-width: 0; }
+.contact-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.contact-company { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.contact-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.contact-status { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.status-pill {
+  display: flex; align-items: center; gap: 4px; padding: 3px 8px;
+  border-radius: 6px; font-size: 10px; font-weight: 700;
+}
+.status-pill.sent   { background: #f0fdf4; color: var(--success); }
+.status-pill.queued { background: #fffbeb; color: var(--warning); }
+.status-pill.failed { background: #fef2f2; color: var(--error); }
+.status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.queued-anim { animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.crm-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 6px; font-size: 9px; font-weight: 700; color: var(--success);
+}
+
+.queue-widget {
+  margin: 10px 20px 0;
+  background: #fffbeb; border: 1px solid #fcd34d;
+  border-radius: var(--radius-xs); padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px; font-size: 13px;
+}
+.queue-widget.hidden { display: none; }
+.queue-widget-num { font-weight: 800; font-size: 18px; color: var(--warning); margin-left: auto; }
+
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 60px 20px; color: var(--text3); text-align: center;
+}
+.empty-state h3 { font-size: 16px; font-weight: 700; color: var(--text2); }
+.empty-state p { font-size: 13px; }
+
+/* ===== PROCESSING OVERLAY ===== */
+.processing-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(255,255,255,0.95);
+  z-index: 1000; align-items: center; justify-content: center;
+  flex-direction: column; gap: 20px; backdrop-filter: blur(10px);
+}
+.processing-overlay.show { display: flex; }
+.spinner {
+  width: 52px; height: 52px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.processing-overlay > p { font-weight: 700; font-size: 15px; color: var(--text2); }
+.processing-steps { display: flex; flex-direction: column; gap: 10px; }
+.proc-step { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text3); transition: color 0.3s; }
+.proc-step.active { color: var(--accent); font-weight: 600; }
+.proc-step.done   { color: var(--success); }
+.proc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; transition: background 0.3s; }
+.proc-step.active .proc-dot { background: var(--accent); box-shadow: 0 0 6px rgba(37,99,235,0.5); }
+.proc-step.done   .proc-dot { background: var(--success); }
+
+/* ===== TOAST ===== */
+.toast-container { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 900; display: flex; flex-direction: column; gap: 8px; pointer-events: none; width: min(380px, 90vw); }
+.toast {
+  padding: 12px 16px; background: var(--text); color: white;
+  border-radius: var(--radius-xs); font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-md);
+  animation: toastIn 0.25s ease; pointer-events: auto;
+}
+@keyframes toastIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+.toast.success { background: #15803d; }
+.toast.warning { background: #d97706; }
+.toast.error   { background: #dc2626; }
+.toast.info    { background: var(--accent); }
+
+/* ===== CONNECTIVITY BANNER ===== */
+.connectivity-banner {
+  display: none; background: var(--warning); color: white;
+  padding: 8px 16px; font-size: 12px; font-weight: 700; text-align: center;
+  align-items: center; justify-content: center; gap: 8px;
+}
+.connectivity-banner.show { display: flex; }
+.connectivity-banner.online { background: var(--success); }
+
+/* ===== CONFIG / SETTINGS OVERLAY ===== */
+.config-overlay {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: var(--bg); overflow-y: auto; padding-bottom: 40px;
+}
+.config-overlay.show { display: block; }
+.config-header {
+  display: flex; align-items: center; justify-content: space-between; padding: 20px;
+  border-bottom: 1px solid var(--border); position: sticky; top: 0;
+  background: var(--surface); z-index: 10;
+}
+.config-header h2 { font-weight: 700; font-size: 20px; }
+.config-close {
+  width: 36px; height: 36px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.config-section { padding: 20px; border-bottom: 1px solid var(--border); background: var(--surface); margin-bottom: 8px; }
+.config-section-title { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+.config-field { margin-bottom: 12px; }
+.config-label { font-size: 12px; color: var(--text2); font-weight: 600; margin-bottom: 5px; }
+.config-input {
+  width: 100%; background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: var(--radius-xs); padding: 10px 12px; color: var(--text);
+  font-size: 14px; outline: none;
+}
+.config-input:focus { border-color: var(--accent); }
+textarea.config-input { min-height: 80px; resize: vertical; }
+.config-save {
+  width: 100%; margin-top: 8px; padding: 13px;
+  background: var(--accent); border: none; border-radius: var(--radius-sm);
+  color: white; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.config-note { font-size: 11px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
+
+/* ===== MODALS ===== */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 600;
+  background: var(--bg); overflow-y: auto; padding-bottom: 40px;
+}
+.modal-overlay.show { display: block; }
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between; padding: 20px;
+  border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 10;
+}
+.modal-back {
+  width: 36px; height: 36px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.modal-content { padding: 20px; }
+.modal-avatar {
+  width: 72px; height: 72px; border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 28px; color: white; margin-bottom: 14px;
+}
+.modal-name { font-weight: 800; font-size: 24px; color: var(--text); }
+.modal-company { font-size: 14px; color: var(--text2); margin-top: 2px; }
+.modal-actions { display: flex; gap: 10px; margin: 20px 0; }
+.modal-action-btn {
+  flex: 1; padding: 12px 8px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-xs); color: var(--text); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.modal-action-btn:active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+.detail-rows { display: flex; flex-direction: column; }
+.detail-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.detail-row:last-child { border-bottom: none; }
+.detail-icon { color: var(--text3); margin-top: 1px; flex-shrink: 0; }
+.detail-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+.detail-text { font-size: 14px; color: var(--text); }
+
+.message-status-panel {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 16px; margin-top: 16px;
+}
+.msg-status-title { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+.msg-status-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.msg-status-row:last-child { border-bottom: none; }
+.msg-label { font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.resend-btn {
+  padding: 4px 12px; background: var(--accent-light); border: 1px solid #bfdbfe;
+  border-radius: 6px; color: var(--accent); font-size: 11px; font-weight: 700; cursor: pointer;
+}
+
+.tmpl-tag {
+  display: inline-block; padding: 4px 10px;
+  background: var(--accent-light); border: 1px solid #bfdbfe;
+  border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--accent);
+  cursor: pointer; transition: all 0.15s; font-family: monospace;
+}
+.tmpl-tag:hover { background: var(--accent); color: white; }
+.tmpl-line-row { display: flex; align-items: center; gap: 8px; }
+.tmpl-line-input {
+  flex: 1; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: var(--radius-xs); padding: 9px 12px; color: var(--text);
+  font-size: 14px; outline: none;
+}
+.tmpl-line-input:focus { border-color: var(--accent); }
+.tmpl-line-btn {
+  width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface2); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px; color: var(--text2); flex-shrink: 0;
+}
+.tmpl-line-btn:active { background: var(--border); }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+#fileInput, #cameraInput { display: none; }
+.fade-in { animation: fadeIn 0.25s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+</style>
+</head>
+<body>
+
+<!-- Connectivity Banner -->
+<div class="connectivity-banner" id="connectivityBanner">
+  <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+  <span id="bannerText">Offline — messages will queue automatically</span>
+</div>
+
+<div id="app">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-logo">
+      <div class="app-logo-icon">
+        <svg width="20" height="20" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8L6 7h12z"/></svg>
+      </div>
+      <span class="app-logo-text">CardConnect AI</span>
+    </div>
+    <div class="header-actions">
+      <div class="online-chip" id="onlineChip">
+        <div class="online-dot"></div>
+        <span id="onlineText">Online</span>
+      </div>
+      <div class="icon-btn" id="queueBtn" title="Offline Queue">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        <span class="badge hidden" id="queueBadge">0</span>
+      </div>
+      <div class="icon-btn" id="configBtn" title="Settings">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== SCREEN 1: SCAN ===== -->
+  <section class="screen active" id="screen-scan">
+    <div class="scan-page-header">
+      <h1>Capture Card</h1>
+      <p>Instant AI extraction from any business card.</p>
+    </div>
+
+    <div class="scan-card-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div id="cardPreviewInZone">
+        <div class="scan-zone-inner">
+          <div class="scan-zone-icon">
+            <svg width="26" height="26" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8L6 7h12z"/></svg>
+          </div>
+          <div class="scan-zone-text">Upload or Take Photo</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scan-btns">
+      <button class="btn-primary" onclick="document.getElementById('cameraInput').click()">
+        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Take Photo
+      </button>
+      <button class="btn-upload" onclick="document.getElementById('fileInput').click()">
+        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        Upload
+      </button>
+    </div>
+
+    <div class="features-section">
+      <div class="features-label">AI Core Features</div>
+      <div class="features-grid">
+        <div class="feature-card blue">
+          <div class="feature-icon blue">
+            <svg width="18" height="18" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div class="feature-title">Fast OCR</div>
+          <div class="feature-desc">In-browser local AI engine reads card text instantly.</div>
+        </div>
+        <div class="feature-card green">
+          <div class="feature-icon green">
+            <svg width="18" height="18" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55M5 12.55a10.94 10.94 0 015.17-2.39M10.71 5.05A16 16 0 0122.56 9M1.42 9a15.91 15.91 0 014.7-2.88M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>
+          </div>
+          <div class="feature-title">100% Offline</div>
+          <div class="feature-desc">Fully works without internet. Scan, edit, &amp; save instantly.</div>
+        </div>
+        <div class="feature-card amber">
+          <div class="feature-icon amber">
+            <svg width="18" height="18" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div class="feature-title">Smart Match</div>
+          <div class="feature-desc">Detects duplicate contacts instantly in local DB.</div>
+        </div>
+        <div class="feature-card purple">
+          <div class="feature-icon purple">
+            <svg width="18" height="18" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+          </div>
+          <div class="feature-title">Smart Queue</div>
+          <div class="feature-desc">Queues follow-ups and CRM syncs until online.</div>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*"/>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment"/>
+  </section>
+
+  <!-- ===== SCREEN 2: REVIEW ===== -->
+  <section class="screen" id="screen-review">
+    <div class="review-header">
+      <h2>Review Details</h2>
+      <p>Check the extracted info and fix any errors before saving</p>
+    </div>
+
+    <div class="card-preview-strip" id="cardPreviewStrip">
+      <div class="no-img" id="noImgPlaceholder">No image loaded</div>
+      <img id="cardImg" style="display:none" alt="Business card"/>
+      <div class="confidence-bar" id="confBar" style="display:none">
+        <span style="font-size:10px;color:var(--text2)">OCR Confidence:</span>
+        <div class="conf-dots" id="confDots"></div>
+        <span id="confPct" style="color:var(--accent2);font-weight:700"></span>
+      </div>
+    </div>
+
+    <div class="dup-banner hidden" id="dupBanner">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      <span id="dupMessage">Duplicate contact detected!</span>
+    </div>
+
+    <div class="form-section">
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input type="text" class="form-input" id="f_name" placeholder="e.g. Arjun Sharma"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Job Title</label>
+          <input type="text" class="form-input" id="f_title" placeholder="e.g. Sales Manager"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Company *</label>
+          <input type="text" class="form-input" id="f_company" placeholder="e.g. Acme Corp"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone *</label>
+        <input type="tel" class="form-input" id="f_phone" placeholder="+91 98765 43210"/>
+        <div class="field-hint hidden" id="phoneHint"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="f_email" placeholder="arjun@company.com"/>
+        <div class="field-hint hidden" id="emailHint"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Website</label>
+        <input type="url" class="form-input" id="f_website" placeholder="https://company.com"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Event / Source</label>
+        <input type="text" class="form-input" id="f_event" placeholder="e.g. Tech Expo 2025"/>
+        <div class="event-tag-row" id="eventTags"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <input type="text" class="form-input" id="f_notes" placeholder="Any notes about this contact..."/>
+      </div>
+    </div>
+
+    <div class="review-actions">
+      <button class="btn-save" id="saveBtn" onclick="saveContact()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save & Send Messages
+      </button>
+      <button class="btn-discard" onclick="discardReview()">Discard & Scan Again</button>
+    </div>
+  </section>
+
+  <!-- ===== SCREEN 3: CONTACTS ===== -->
+  <section class="screen" id="screen-contacts">
+    <div class="contacts-header">
+      <div class="contacts-title-row">
+        <h2>Contacts</h2>
+        <span class="count-chip" id="contactsCount">0 saved</span>
+      </div>
+      <div class="search-box">
+        <svg width="16" height="16" fill="none" stroke="var(--text3)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" placeholder="Search name, company, phone…" oninput="renderContacts()"/>
+      </div>
+    </div>
+
+    <div class="filter-row" id="filterRow">
+      <div class="filter-chip active" data-filter="all">All</div>
+      <div class="filter-chip" data-filter="queued">Pending Send</div>
+      <div class="filter-chip" data-filter="sent">Sent</div>
+      <div class="filter-chip" data-filter="today">Today</div>
+    </div>
+
+    <div class="queue-widget hidden" id="queueWidget">
+      <div class="queue-widget-icon">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+      </div>
+      <div class="queue-widget-text">Messages waiting to send</div>
+      <div class="queue-widget-num" id="queueWidgetNum">0</div>
+    </div>
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card">
+        <div class="stat-num" id="statTotal">0</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num green" id="statSent">0</div>
+        <div class="stat-label">Messages Sent</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num amber" id="statQueued">0</div>
+        <div class="stat-label">Queued</div>
+      </div>
+    </div>
+
+    <div class="contacts-list" id="contactsList"></div>
+  </section>
+<!-- ===== BOTTOM NAV ===== -->
+<nav class="bottom-nav">
+  <div class="nav-tab active" data-screen="scan" id="navScan">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+    Scan
+  </div>
+  <div class="nav-tab" data-screen="review" id="navReview">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Review
+  </div>
+  <div class="nav-fab" onclick="document.getElementById('cameraInput').click()" title="Scan card">
+    <svg width="24" height="24" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><path d="M3 17h3v3H3zM6 14H3v3"/></svg>
+  </div>
+  <div class="nav-tab" data-screen="contacts" id="navContacts">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+    Contacts
+  </div>
+  <div class="nav-tab" data-screen="settings" id="navSettings">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+    Settings
+  </div>
+</nav>
+</div>
+<div class="processing-overlay" id="processingOverlay">
+  <div class="spinner"></div>
+  <p>Scanning business card…</p>
+  <div class="processing-steps">
+    <div class="proc-step" id="ps1"><div class="proc-dot"></div>Loading OCR engine</div>
+    <div class="proc-step" id="ps2"><div class="proc-dot"></div>Tesseract scan (pass 1)</div>
+    <div class="proc-step" id="ps3"><div class="proc-dot"></div>Gemini Vision (pass 2)</div>
+    <div class="proc-step" id="ps4"><div class="proc-dot"></div>Parsing &amp; duplicate check</div>
+  </div>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ===== SETTINGS SCREEN (replaces overlay — now a full screen) ===== -->
+<section class="screen" id="screen-settings" style="padding-bottom:90px;overflow-y:auto;">
+
+  <!-- Header -->
+  <div style="padding:24px 20px 8px;">
+    <h1 style="font-size:26px;font-weight:700;letter-spacing:-0.5px;">Settings</h1>
+    <p style="font-size:14px;color:var(--text2);margin-top:4px;">Personalise your customised follow-ups.</p>
+  </div>
+
+  <!-- ===== WHATSAPP TEMPLATE ===== -->
+  <div style="margin:8px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:32px;height:32px;background:#25D366;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.78 9.78 0 01-4.988-1.362l-3.488.913.932-3.404A9.788 9.788 0 012.21 12C2.21 6.64 6.64 2.21 12 2.21S21.79 6.64 21.79 12 17.36 21.79 12.029 21.79z"/></svg>
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:700;">WhatsApp Follow-up</div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Message Template</div>
+
+    <!-- Line editor rows -->
+    <div id="waLines" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+
+    <!-- Variable tag chips -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;" id="waTagRow">
+      <span class="tmpl-tag" onclick="insertTag('wa','{{name}}')">{{name}}</span>
+      <span class="tmpl-tag" onclick="insertTag('wa','{{company}}')">{{company}}</span>
+      <span class="tmpl-tag" onclick="insertTag('wa','{{event}}')">{{event}}</span>
+      <span class="tmpl-tag" onclick="insertTag('wa','{{title}}')">{{title}}</span>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="btn-save" onclick="saveTemplate('wa')" style="flex:2;padding:11px;">Save Changes</button>
+      <button class="btn-discard" onclick="resetTemplate('wa')" style="flex:1;padding:11px;">Reset</button>
+    </div>
+
+    <!-- Preview -->
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Preview</div>
+    <div style="background:#dcf8c6;border-radius:12px 12px 0 12px;padding:12px 14px;font-size:13px;line-height:1.6;color:#111;" id="waPreview"></div>
+  </div>
+
+  <!-- ===== EMAIL TEMPLATE ===== -->
+  <div style="margin:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:32px;height:32px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:700;">Email Follow-up</div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Subject Line</div>
+    <input type="text" class="form-input" id="emailSubject" placeholder="Great connecting with you, {{name}}!" style="margin-bottom:12px;"/>
+
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Email Body</div>
+    <div id="emailLines" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+
+    <!-- Variable tag chips -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;" id="emailTagRow">
+      <span class="tmpl-tag" onclick="insertTag('email','{{name}}')">{{name}}</span>
+      <span class="tmpl-tag" onclick="insertTag('email','{{company}}')">{{company}}</span>
+      <span class="tmpl-tag" onclick="insertTag('email','{{event}}')">{{event}}</span>
+      <span class="tmpl-tag" onclick="insertTag('email','{{title}}')">{{title}}</span>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="btn-save" onclick="saveTemplate('email')" style="flex:2;padding:11px;">Save Changes</button>
+      <button class="btn-discard" onclick="resetTemplate('email')" style="flex:1;padding:11px;">Reset</button>
+    </div>
+
+    <!-- Preview -->
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Preview</div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-size:13px;line-height:1.7;color:var(--text);" id="emailPreview"></div>
+  </div>
+
+  <!-- ===== ZOHO CRM ===== -->
+  <div style="margin:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:32px;height:32px;background:#e5442b;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:700;">Zoho CRM</div>
+        <div style="font-size:11px;color:var(--text3);">Auto-save contacts as Leads</div>
+      </div>
+      <div id="zohoCrmStatusDot" style="width:10px;height:10px;border-radius:50%;background:var(--border);"></div>
+    </div>
+
+    <!-- Step tabs -->
+    <div style="display:flex;border-radius:8px;overflow:hidden;border:1px solid var(--border);margin-bottom:14px;">
+      <div style="flex:1;text-align:center;padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.15s;" id="zStep1Btn" onclick="zohoGoStep(1)">1. Credentials</div>
+      <div style="flex:1;text-align:center;padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;border-left:1px solid var(--border);transition:all 0.15s;" id="zStep2Btn" onclick="zohoGoStep(2)">2. Authorize</div>
+      <div style="flex:1;text-align:center;padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;border-left:1px solid var(--border);transition:all 0.15s;" id="zStep3Btn" onclick="zohoGoStep(3)">3. Token</div>
+    </div>
+
+    <!-- STEP 1 -->
+    <div id="zohoStep1">
+      <div style="background:var(--accent-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--accent);margin-bottom:12px;line-height:1.6;">
+        Go to <strong>api-console.zoho.com</strong> → Add Client → Server-based Applications → Redirect URI: <strong>https://ulavi-six.vercel.app/</strong>
+      </div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">Client ID</label>
+        <input type="text" class="form-input" id="cfg_zoho_client_id" placeholder="1000.XXXXXXXXXX"/>
+      </div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">Client Secret</label>
+        <input type="password" class="form-input" id="cfg_zoho_client_secret" placeholder="xxxxxxxxxxxxxxxx"/>
+      </div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">Redirect URI</label>
+        <input type="text" class="form-input" id="cfg_zoho_redirect" value="https://ulavi-six.vercel.app/"/>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label">Data Center</label>
+        <select class="form-input" id="cfg_zoho_dc">
+          <option value="in">India (.in) — recommended</option>
+          <option value="com">Global (.com)</option>
+          <option value="eu">Europe (.eu)</option>
+          <option value="au">Australia (.au)</option>
+          <option value="jp">Japan (.jp)</option>
+        </select>
+      </div>
+      <button class="btn-save" onclick="zohoStep1Next()" style="width:100%;padding:13px;">Next: Authorize →</button>
+    </div>
+
+    <!-- STEP 2 -->
+    <div id="zohoStep2" style="display:none;">
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;font-size:13px;color:#15803d;margin-bottom:12px;line-height:1.6;">
+        Click below → Log in to Zoho → click <strong>Accept</strong> → copy the <code style="background:#dcfce7;padding:1px 5px;border-radius:4px;">code=</code> value from the redirect URL
+      </div>
+      <button class="btn-save" onclick="zohoOpenAuthURL()" style="width:100%;padding:13px;background:#15803d;margin-bottom:10px;">🔐 Open Zoho Authorization Page</button>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">Authorization Code (from redirect URL)</label>
+        <input type="text" class="form-input" id="cfg_zoho_auth_code" placeholder="1000.xxxx..."/>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;">URL looks like: <code style="font-size:11px;">.../?code=1000.xxxx&location=in...</code></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-discard" onclick="zohoGoStep(1)" style="flex:1;padding:11px;">← Back</button>
+        <button class="btn-save" onclick="zohoExchangeToken()" style="flex:2;padding:11px;">Exchange for Token →</button>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div id="zohoStep3" style="display:none;">
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">Access Token</label>
+        <input type="password" class="form-input" id="cfg_zoho_token" placeholder="Auto-filled · expires in 1hr"/>
+      </div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">Refresh Token (never expires)</label>
+        <input type="password" class="form-input" id="cfg_zoho_refresh" placeholder="Auto-filled"/>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label">Token Expires At</label>
+        <input type="text" class="form-input" id="cfg_zoho_expires" readonly style="background:var(--bg);font-size:13px;"/>
+      </div>
+      <div id="zohoTestResult" style="display:none;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:10px;line-height:1.6;"></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button class="btn-discard" onclick="zohoGoStep(2)" style="flex:1;padding:11px;">← Back</button>
+        <button class="btn-save" onclick="zohoTestConnection()" style="flex:2;padding:11px;">🔌 Test Connection</button>
+      </div>
+      <!-- Manual fallback -->
+      <button class="btn-discard" onclick="document.getElementById('zohoManualSection').style.display='block'" style="width:100%;padding:10px;font-size:13px;">Or paste token manually</button>
+      <div id="zohoManualSection" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        <label class="form-label">Paste Access Token directly</label>
+        <input type="password" class="form-input" id="cfg_zoho_token_manual" placeholder="1000.xxxxx..." style="margin-bottom:8px;"/>
+        <button class="btn-save" onclick="useManualToken()" style="width:100%;padding:11px;">Use This Token</button>
+      </div>
+    </div>
+  </div>
+
+
+<!-- ===== CONTACT DETAIL MODAL ===== -->
+<div class="modal-overlay" id="contactModal">
+  <div class="modal-header">
+    <div class="modal-back" onclick="closeModal()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    </div>
+    <span class="crm-badge" id="modalCrmBadge" style="display:none">
+      <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
+      <span id="modalCrmBadgeText">Synced to CRM</span>
+    </span>
+  </div>
+  <div class="modal-content" id="modalContent"></div>
+</div>
+
+<!-- ===== CONTACT PICKER MODAL (multiple contacts detected) ===== -->
+<div class="modal-overlay" id="pickerModal">
+  <div style="padding:20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;">Multiple contacts found</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px;">Select who to save &amp; message</div>
+    </div>
+    <div class="modal-back" onclick="closePicker()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </div>
+  </div>
+  <div style="padding:16px;display:flex;flex-direction:column;gap:10px;" id="pickerList"></div>
+  <div style="padding:0 16px 20px;">
+    <button class="btn-save" id="pickerSaveBtn" onclick="confirmPickerSelection()" style="opacity:0.4;pointer-events:none;">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/></svg>
+      Save Selected Contact
+    </button>
+    <button class="btn-discard" style="margin-top:8px;width:100%" onclick="closePicker()">Cancel — scan again</button>
+  </div>
+</div>
+
+<script>
+// =============================================
+// CARDSNAP — FULL APP LOGIC
+// =============================================
+
+// ---- State ----
+let contacts = [];
+let offlineQueue = [];
+let currentImageDataURL = null;
+let currentContact = null;
+let config = {};
+let activeFilter = 'all';
+let isOnline = navigator.onLine;
+
+// ---- Avatar colors ----
+const AVATAR_COLORS = [
+  ['#3d7eff','#1a3d7a'],['#00e5a0','#006b4a'],['#ff6b3d','#7a2d14'],
+  ['#a855f7','#4c1d95'],['#f59e0b','#78350f'],['#ec4899','#831843']
+];
+
+// =============================================
+// INIT
+// =============================================
+function init() {
+  loadFromStorage();
+  setupEventListeners();
+  checkConnectivity();
+  loadConfigUI();
+  loadTemplates();
+  renderContacts();
+  renderEventTags();
+  updateQueueBadge();
+
+  // Start background queue flush check
+  setInterval(tryFlushQueue, 30000);
+  setInterval(checkConnectivity, 5000);
+  setInterval(flushCrmQueue, 60000); // retry CRM sync every 60s
+}
+
+function loadFromStorage() {
+  try {
+    contacts = JSON.parse(localStorage.getItem('cardsnap_contacts') || '[]');
+    offlineQueue = JSON.parse(localStorage.getItem('cardsnap_queue') || '[]');
+    config = JSON.parse(localStorage.getItem('cardsnap_config') || '{}');
+  } catch(e) { contacts = []; offlineQueue = []; config = {}; }
+}
+
+function saveToStorage() {
+  localStorage.setItem('cardsnap_contacts', JSON.stringify(contacts));
+  localStorage.setItem('cardsnap_queue', JSON.stringify(offlineQueue));
+}
+
+function saveConfig() {
+  config = {
+    gemini_key:          document.getElementById('cfg_gemini_key').value.trim(),
+    // Zoho OAuth fields — preserved from zohoOAuth functions
+    zoho_client_id:      config.zoho_client_id     || '',
+    zoho_client_secret:  config.zoho_client_secret  || '',
+    zoho_redirect:       config.zoho_redirect       || '',
+    zoho_dc:             config.zoho_dc             || 'com',
+    zoho_token:          config.zoho_token          || '',
+    zoho_refresh:        config.zoho_refresh        || '',
+    zoho_expires:        config.zoho_expires        || 0,
+    wa_token: document.getElementById('cfg_wa_token').value.trim(),
+    wa_phone_id: document.getElementById('cfg_wa_phone_id').value.trim(),
+    wa_template: document.getElementById('cfg_wa_template').value.trim() || 'nice_meeting_you',
+    wa_lang: document.getElementById('cfg_wa_lang').value.trim() || 'en_US',
+    ejs_service: document.getElementById('cfg_ejs_service').value.trim(),
+    ejs_template: document.getElementById('cfg_ejs_template').value.trim(),
+    ejs_pubkey: document.getElementById('cfg_ejs_pubkey').value.trim(),
+    events: document.getElementById('cfg_events').value.trim(),
+  };
+  localStorage.setItem('cardsnap_config', JSON.stringify(config));
+  toggleConfig(false);
+  toast('Configuration saved', 'success');
+  renderEventTags();
+}
+
+function loadConfigUI() {
+  const map = {
+    cfg_gemini_key:'gemini_key', cfg_wa_token:'wa_token', cfg_wa_phone_id:'wa_phone_id',
+    cfg_wa_template:'wa_template', cfg_wa_lang:'wa_lang',
+    cfg_ejs_service:'ejs_service', cfg_ejs_template:'ejs_template', cfg_ejs_pubkey:'ejs_pubkey',
+    cfg_events:'events'
+  };
+  Object.entries(map).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el && config[key]) el.value = config[key];
+  });
+  loadZohoConfigUI();
+}
+
+// =============================================
+// EVENT LISTENERS
+// =============================================
+function setupEventListeners() {
+  // Nav tabs — bottom nav
+  document.querySelectorAll('.nav-tab[data-screen]').forEach(tab => {
+    tab.addEventListener('click', () => switchScreen(tab.dataset.screen));
+  });
+
+  // File inputs
+  document.getElementById('fileInput').addEventListener('change', handleFileInput);
+  document.getElementById('cameraInput').addEventListener('change', handleFileInput);
+
+  // Drag & drop
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) processImage(file);
+  });
+
+  // Filter chips
+  document.getElementById('filterRow').addEventListener('click', e => {
+    const chip = e.target.closest('.filter-chip');
+    if (!chip) return;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    activeFilter = chip.dataset.filter;
+    renderContacts();
+  });
+
+  // Config & queue buttons
+  document.getElementById('configBtn').addEventListener('click', () => toggleConfig(true));
+  document.getElementById('queueBtn').addEventListener('click', () => {
+    switchScreen('contacts');
+    activeFilter = 'queued';
+    document.querySelectorAll('.filter-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.filter === 'queued');
+    });
+    renderContacts();
+  });
+
+  // Phone/email validation on change
+  document.getElementById('f_phone').addEventListener('input', validatePhone);
+  document.getElementById('f_email').addEventListener('input', validateEmail);
+  document.getElementById('f_phone').addEventListener('blur', checkDuplicate);
+  document.getElementById('f_email').addEventListener('blur', checkDuplicate);
+
+  // Online/offline events
+  window.addEventListener('online', () => { isOnline = true; handleOnline(); });
+  window.addEventListener('offline', () => { isOnline = false; handleOffline(); });
+}
+
+// =============================================
+// SCREEN NAVIGATION
+// =============================================
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab[data-screen]').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  const tab = document.querySelector(`.nav-tab[data-screen="${name}"]`);
+  if (tab) tab.classList.add('active');
+  if (name === 'contacts') { renderContacts(); updateStats(); }
+}
+
+// =============================================
+// IMAGE HANDLING
+// =============================================
+function handleFileInput(e) {
+  const file = e.target.files[0];
+  if (file) processImage(file);
+  e.target.value = '';
+}
+
+function processImage(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    currentImageDataURL = e.target.result;
+    // Update zone preview
+    const zone = document.getElementById('cardPreviewInZone');
+    zone.innerHTML = `<img src="${currentImageDataURL}" style="width:100%;height:100%;object-fit:cover;border-radius:14px;" alt="Card"/>`;
+    startOCR(currentImageDataURL);
+  };
+  reader.readAsDataURL(file);
+}
+
+// =============================================
+// =============================================
+// DUAL OCR ENGINE — Tesseract + Gemini Vision
+// Strategy: Tesseract runs first (free, offline).
+// If confidence < 80%, Gemini Vision runs as pass 2.
+// If no Gemini key, Tesseract result is used as-is.
+// =============================================
+
+const CONFIDENCE_THRESHOLD = 0.80; // below this → trigger Gemini pass
+
+// ---- Load Tesseract.js ----
+function loadTesseract() {
+  return new Promise((resolve, reject) => {
+    if (window.Tesseract) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Failed to load Tesseract.js'));
+    document.head.appendChild(s);
+  });
+}
+
+// ---- Main OCR orchestrator ----
+async function startOCR(imageDataURL) {
+  showProcessing(true);
+  stepActive('ps1');
+
+  try {
+    // PASS 1 — Load Tesseract
+    await loadTesseract();
+    stepDone('ps1'); stepActive('ps2');
+
+    // PASS 1 — Run Tesseract OCR
+    const { rawText, tesseractConf } = await runTesseractOCR(imageDataURL);
+    const tessResult = parseCardText(rawText);
+    const tessConf = tessResult.multiple ? 0.5 : (tessResult.confidence || 0);
+
+    stepDone('ps2'); stepActive('ps3');
+
+    // PASS 2 — Gemini Vision (if low confidence OR key exists and accuracy matters)
+    let finalResult = tessResult.multiple ? tessResult : tessResult;
+    let usedGemini = false;
+
+    if (config.gemini_key && (tessConf < CONFIDENCE_THRESHOLD || tessResult.multiple)) {
+      try {
+        updateProcLabel('ps3', 'Gemini Vision boosting accuracy…');
+        const geminiResult = await runGeminiOCR(imageDataURL);
+        // Merge: prefer Gemini fields, fill blanks with Tesseract
+        if (!tessResult.multiple) {
+          finalResult = mergeResults(tessResult, geminiResult);
+        } else {
+          // For multiple contacts, use Gemini's structured output
+          finalResult = geminiResult;
+        }
+        usedGemini = true;
+        updateProcLabel('ps3', 'Gemini Vision (pass 2) ✓');
+      } catch(e) {
+        console.warn('Gemini fallback failed:', e.message);
+        updateProcLabel('ps3', 'Gemini skipped — using Tesseract');
+      }
+    } else if (!config.gemini_key) {
+      updateProcLabel('ps3', 'Gemini skipped (no key set)');
+    } else {
+      updateProcLabel('ps3', 'Tesseract confidence OK — skipped Gemini');
+    }
+
+    stepDone('ps3'); stepActive('ps4');
+    await delay(200);
+    stepDone('ps4');
+    await delay(300);
+
+    showProcessing(false);
+
+    const engineMsg = usedGemini
+      ? `Scanned with Tesseract + Gemini (${Math.round((finalResult.confidence||0)*100)}% confidence)`
+      : `Scanned with Tesseract (${Math.round(tessConf*100)}% confidence)`;
+    toast(engineMsg, tessConf >= CONFIDENCE_THRESHOLD || usedGemini ? 'success' : 'warning');
+
+    // Multiple contacts — show picker
+    if (finalResult.multiple && finalResult.candidates && finalResult.candidates.length >= 2) {
+      toast(`${finalResult.candidates.length} contacts detected — pick one`, 'warning');
+      showContactPicker(finalResult.candidates, imageDataURL);
+      return;
+    }
+
+    populateReviewForm(finalResult, imageDataURL);
+    switchScreen('review');
+
+  } catch(err) {
+    showProcessing(false);
+    toast('OCR failed: ' + err.message, 'error');
+    console.error(err);
+  }
+}
+
+function updateProcLabel(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.childNodes[el.childNodes.length - 1].textContent = text;
+}
+
+// ---- Tesseract pass ----
+async function runTesseractOCR(imageDataURL) {
+  let tesseractConf = 0;
+  const result = await Tesseract.recognize(imageDataURL, 'eng', {
+    logger: m => {
+      if (m.status === 'recognizing text') {
+        const el = document.querySelector('#ps2 .proc-dot');
+        if (el) el.style.opacity = 0.5 + (m.progress * 0.5);
+      }
+    }
+  });
+  tesseractConf = result.data.confidence / 100;
+  return { rawText: result.data.text, tesseractConf };
+}
+
+// ---- Gemini Vision pass ----
+async function runGeminiOCR(imageDataURL) {
+  const base64 = imageDataURL.split(',')[1];
+  const mimeType = imageDataURL.split(';')[0].split(':')[1];
+
+  const prompt = `You are extracting contact information from a business card image.
+Return ONLY a valid JSON object — no markdown, no explanation, just raw JSON.
+If you detect MORE THAN ONE person's contact on the card, return:
+{"multiple":true,"candidates":[{"name":"","title":"","company":"","phone":"","email":"","website":"","address":"","confidence":0.95}, ...]}
+If only ONE person, return:
+{"name":"","title":"","company":"","phone":"","email":"","website":"","address":"","confidence":0.95}
+Use empty string "" for any field not found. confidence is 0.0-1.0.`;
+
+  const body = {
+    contents: [{
+      parts: [
+        { inline_data: { mime_type: mimeType, data: base64 } },
+        { text: prompt }
+      ]
+    }],
+    generationConfig: { temperature: 0, maxOutputTokens: 512 }
+  };
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.gemini_key}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  );
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'Gemini API error ' + res.status);
+  }
+
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const clean = text.replace(/```json|```/g,'').trim();
+  const parsed = JSON.parse(clean);
+
+  // Normalise multiple format
+  if (parsed.multiple && parsed.candidates) return { multiple: true, candidates: parsed.candidates };
+  return parsed;
+}
+
+// ---- Merge Tesseract + Gemini — prefer Gemini, fill blanks with Tesseract ----
+function mergeResults(tess, gemini) {
+  const fields = ['name','title','company','phone','email','website','address'];
+  const merged = {};
+  for (const f of fields) {
+    merged[f] = (gemini[f] && gemini[f].trim()) ? gemini[f] : (tess[f] || '');
+  }
+  // Use the higher confidence
+  merged.confidence = Math.max(gemini.confidence || 0, tess.confidence || 0);
+  return merged;
+}
+
+// =============================================
+// SMART MULTI-CONTACT PARSER
+// =============================================
+
+// Title/job keywords used across parsers
+const TITLE_KEYWORDS = [
+  'manager','director','ceo','cto','cfo','coo','vp','vice president','president',
+  'engineer','developer','designer','consultant','analyst','executive','officer',
+  'head','lead','founder','partner','associate','sales','marketing','hr','finance',
+  'operations','representative','specialist','coordinator','supervisor','intern','trainee'
+];
+
+// Extract ALL emails from text
+function extractAllEmails(text) {
+  return [...text.matchAll(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g)]
+    .map(m => m[0].toLowerCase());
+}
+
+// Extract ALL phone numbers from text
+function extractAllPhones(lines) {
+  const phones = [];
+  const phoneRx = /(\+?[\d\s\-().]{7,18}\d)/g;
+  for (const line of lines) {
+    const matches = [...line.matchAll(phoneRx)];
+    for (const m of matches) {
+      const digits = m[0].replace(/\D/g,'');
+      if (digits.length >= 7 && digits.length <= 15 && !phones.includes(m[0].trim())) {
+        phones.push(m[0].trim());
+      }
+    }
+  }
+  return phones;
+}
+
+// Extract website
+function extractWebsite(text, emails) {
+  const websiteRx = /((?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9\-]+\.[a-zA-Z]{2,}(?:\/\S*)?)/gi;
+  const matches = [...text.matchAll(websiteRx)].map(m => m[0]);
+  for (const candidate of matches) {
+    const isEmail = emails.some(e => candidate.includes(e.split('@')[1]));
+    if (!candidate.includes('@') && candidate.includes('.') && !isEmail) {
+      return candidate.startsWith('http') ? candidate : 'https://' + candidate;
+    }
+  }
+  return '';
+}
+
+// Parse a block of lines into one contact object
+function parseBlock(lines, allEmails, allPhones, website, emailIndex, phoneIndex) {
+  const email = allEmails[emailIndex] || '';
+  const phone = allPhones[phoneIndex] || '';
+
+  const usedValues = [email, phone, website].filter(Boolean);
+  const remaining = lines.filter(line => {
+    const low = line.toLowerCase();
+    return !usedValues.some(v => v && low.includes(v.toLowerCase())) &&
+           line.replace(/\D/g,'').length < line.length * 0.6 &&
+           line.length > 1;
+  });
+
+  let name = '', title = '', company = '';
+
+  for (const line of remaining) {
+    const low = line.toLowerCase();
+    if (!title && TITLE_KEYWORDS.some(k => low.includes(k))) {
+      title = line;
+    } else if (!name && /^[A-Z][a-z]/.test(line) && line.split(' ').length <= 5 && line.length < 50) {
+      name = line;
+    } else if (!company && line.length > 2 && line.length < 60) {
+      if (/[A-Z]{2,}|ltd|pvt|inc|corp|llc|technologies|solutions|services|group/i.test(line)) {
+        company = line;
+      }
+    }
+  }
+
+  if (!name && remaining.length > 0) name = remaining[0];
+  if (!company && remaining.length > 1) company = remaining[1];
+
+  const foundCount = [name, phone, email, company].filter(Boolean).length;
+  const confidence = Math.min(0.95, 0.5 + foundCount * 0.12);
+
+  return { name, title, company, phone, email, website, address: '', confidence };
+}
+
+// Main parser — detects multiple contacts if multiple phones/emails found
+function parseCardText(rawText) {
+  const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+  const fullText = lines.join(' ');
+
+  const allEmails = extractAllEmails(fullText);
+  const allPhones = extractAllPhones(lines);
+  const website   = extractWebsite(fullText, allEmails);
+
+  // Detect multiple contacts: >1 phone OR >1 email with different names
+  const maxContacts = Math.max(allEmails.length, allPhones.length, 1);
+
+  if (maxContacts >= 2) {
+    // Build one candidate contact per phone/email pair
+    const candidates = [];
+    for (let i = 0; i < maxContacts; i++) {
+      const c = parseBlock(lines, allEmails, allPhones, website, i, i);
+      // Only add if it has at least a phone or email
+      if (c.phone || c.email) candidates.push(c);
+    }
+    if (candidates.length >= 2) return { multiple: true, candidates };
+  }
+
+  // Single contact — normal path
+  return parseBlock(lines, allEmails, allPhones, website, 0, 0);
+}
+
+// =============================================
+// CONTACT PICKER — shown when multiple detected
+// =============================================
+let pickerCandidates = [];
+let pickerSelectedIdx = null;
+let pickerImageDataURL = null;
+
+function showContactPicker(candidates, imageDataURL) {
+  pickerCandidates = candidates;
+  pickerSelectedIdx = null;
+  pickerImageDataURL = imageDataURL;
+
+  const list = document.getElementById('pickerList');
+  list.innerHTML = candidates.map((c, i) => {
+    const initials = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    const colors = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    return `
+      <div class="contact-card" id="picker_${i}" onclick="selectPickerContact(${i})" style="cursor:pointer;">
+        <div class="contact-avatar" style="background:linear-gradient(135deg,${colors[0]},${colors[1]})">${initials}</div>
+        <div class="contact-info">
+          <div class="contact-name">${escHtml(c.name || 'Unknown Name')}</div>
+          <div class="contact-company">${escHtml(c.title || c.company || '—')}</div>
+          <div class="contact-meta">
+            ${c.phone ? '📞 ' + escHtml(c.phone) : ''}
+            ${c.phone && c.email ? ' · ' : ''}
+            ${c.email ? '✉ ' + escHtml(c.email) : ''}
+          </div>
+        </div>
+        <div style="width:22px;height:22px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;" id="picker_dot_${i}"></div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('pickerModal').classList.add('show');
+}
+
+function selectPickerContact(idx) {
+  pickerSelectedIdx = idx;
+
+  // Reset all cards
+  pickerCandidates.forEach((_, i) => {
+    const card = document.getElementById('picker_' + i);
+    const dot  = document.getElementById('picker_dot_' + i);
+    if (card) card.style.borderColor = 'var(--border)';
+    if (dot)  { dot.style.background = 'transparent'; dot.style.borderColor = 'var(--border)'; }
+  });
+
+  // Highlight selected
+  const selCard = document.getElementById('picker_' + idx);
+  const selDot  = document.getElementById('picker_dot_' + idx);
+  if (selCard) selCard.style.borderColor = 'var(--accent2)';
+  if (selDot)  { selDot.style.background = 'var(--accent2)'; selDot.style.borderColor = 'var(--accent2)'; }
+
+  // Enable save button
+  const btn = document.getElementById('pickerSaveBtn');
+  btn.style.opacity = '1';
+  btn.style.pointerEvents = 'auto';
+}
+
+function confirmPickerSelection() {
+  if (pickerSelectedIdx === null) { toast('Please select a contact first', 'warning'); return; }
+  const chosen = pickerCandidates[pickerSelectedIdx];
+  closePicker();
+  populateReviewForm(chosen, pickerImageDataURL);
+  switchScreen('review');
+  toast('Contact selected — review and save', 'info');
+}
+
+function closePicker() {
+  document.getElementById('pickerModal').classList.remove('show');
+  pickerCandidates = [];
+  pickerSelectedIdx = null;
+}
+
+// =============================================
+// REVIEW FORM
+// =============================================
+function populateReviewForm(data, imageDataURL) {
+  document.getElementById('f_name').value = data.name || '';
+  document.getElementById('f_title').value = data.title || '';
+  document.getElementById('f_company').value = data.company || '';
+  document.getElementById('f_phone').value = data.phone || '';
+  document.getElementById('f_email').value = data.email || '';
+  document.getElementById('f_website').value = data.website || '';
+  document.getElementById('f_notes').value = data.address || '';
+  document.getElementById('f_event').value = '';
+
+  // Card image
+  const img = document.getElementById('cardImg');
+  const noImg = document.getElementById('noImgPlaceholder');
+  if (imageDataURL) {
+    img.src = imageDataURL;
+    img.style.display = 'block';
+    noImg.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    noImg.style.display = 'flex';
+  }
+
+  // Confidence
+  const conf = data.confidence || 0.8;
+  const dots = document.getElementById('confDots');
+  const filled = Math.round(conf * 5);
+  dots.innerHTML = Array.from({length: 5}, (_, i) =>
+    `<div class="conf-dot ${i < filled ? 'filled' : ''}"></div>`
+  ).join('');
+  document.getElementById('confPct').textContent = Math.round(conf * 100) + '%';
+  document.getElementById('confBar').style.display = 'flex';
+
+  validatePhone(); validateEmail(); checkDuplicate();
+  document.getElementById('dupBanner').classList.add('hidden');
+}
+
+function validatePhone() {
+  const val = document.getElementById('f_phone').value.trim();
+  const hint = document.getElementById('phoneHint');
+  const input = document.getElementById('f_phone');
+  if (!val) { hint.classList.add('hidden'); input.className = 'form-input'; return; }
+  const clean = val.replace(/\D/g, '');
+  if (clean.length >= 7 && clean.length <= 15) {
+    hint.className = 'field-hint ok'; hint.textContent = '✓ Valid phone number'; hint.classList.remove('hidden');
+    input.className = 'form-input';
+  } else {
+    hint.className = 'field-hint warn'; hint.textContent = '⚠ Check phone number format'; hint.classList.remove('hidden');
+    input.className = 'form-input warn';
+  }
+}
+
+function validateEmail() {
+  const val = document.getElementById('f_email').value.trim();
+  const hint = document.getElementById('emailHint');
+  const input = document.getElementById('f_email');
+  if (!val) { hint.classList.add('hidden'); input.className = 'form-input'; return; }
+  const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (emailRx.test(val)) {
+    hint.className = 'field-hint ok'; hint.textContent = '✓ Valid email'; hint.classList.remove('hidden');
+    input.className = 'form-input';
+  } else {
+    hint.className = 'field-hint error'; hint.textContent = '✗ Invalid email format'; hint.classList.remove('hidden');
+    input.className = 'form-input error';
+  }
+}
+
+function checkDuplicate() {
+  const phone = document.getElementById('f_phone').value.trim();
+  const email = document.getElementById('f_email').value.trim().toLowerCase();
+  const banner = document.getElementById('dupBanner');
+  const msg = document.getElementById('dupMessage');
+
+  const dupByPhone = phone && contacts.find(c => normalizePhone(c.phone) === normalizePhone(phone));
+  const dupByEmail = email && contacts.find(c => c.email && c.email.toLowerCase() === email);
+
+  if (dupByPhone) {
+    msg.textContent = `⚠ Phone ${phone} already saved as "${dupByPhone.name}"`;
+    banner.classList.remove('hidden');
+  } else if (dupByEmail) {
+    msg.textContent = `⚠ Email already saved as "${dupByEmail.name}"`;
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+function normalizePhone(p) {
+  return (p || '').replace(/\D/g,'').slice(-10);
+}
+
+function renderEventTags() {
+  const events = (config.events || 'Tech Expo 2025,Startup Summit,Trade Fair,Industry Meet').split(',').map(e => e.trim()).filter(Boolean);
+  const container = document.getElementById('eventTags');
+  container.innerHTML = events.map(ev =>
+    `<div class="event-tag" onclick="selectEventTag(this,'${ev.replace(/'/g,"\\\'")}')">${ev}</div>`
+  ).join('');
+}
+
+function selectEventTag(el, val) {
+  document.querySelectorAll('.event-tag').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('f_event').value = val;
+}
+
+// =============================================
+// SAVE CONTACT
+// =============================================
+async function saveContact() {
+  const name = document.getElementById('f_name').value.trim();
+  const phone = document.getElementById('f_phone').value.trim();
+  if (!name) { toast('Name is required', 'error'); return; }
+  if (!phone) { toast('Phone number is required', 'error'); return; }
+
+  const contact = {
+    id: 'c_' + Date.now(),
+    name,
+    title: document.getElementById('f_title').value.trim(),
+    company: document.getElementById('f_company').value.trim(),
+    phone,
+    email: document.getElementById('f_email').value.trim(),
+    website: document.getElementById('f_website').value.trim(),
+    event: document.getElementById('f_event').value.trim(),
+    notes: document.getElementById('f_notes').value.trim(),
+    imageDataURL: currentImageDataURL,
+    createdAt: new Date().toISOString(),
+    waStatus: 'pending',
+    emailStatus: 'pending',
+    crmSynced: false,
+    crmId: null
+  };
+
+  contacts.unshift(contact);
+  saveToStorage();
+  toast(`Saved ${name}`, 'success');
+
+  // CRM sync
+  syncToZohoCRM(contact);
+
+  // Messaging
+  await sendMessages(contact);
+
+  switchScreen('contacts');
+  renderContacts();
+  updateStats();
+  currentImageDataURL = null;
+}
+
+// =============================================
+// TEMPLATE ENGINE — WhatsApp & Email
+// =============================================
+
+const DEFAULT_WA_LINES = [
+  'Hi {{name}},',
+  'It was great connecting with you!',
+  'We are Ulavi Technologies — glad we connected.'
+];
+
+const DEFAULT_EMAIL_LINES = [
+  'Hi {{name}},',
+  'It was wonderful connecting with you!',
+  'We are Ulavi Technologies, and we truly enjoyed our conversation. We would love to explore how we can work together.'
+];
+
+const DEFAULT_EMAIL_SUBJECT = 'Great connecting with you, {{name}}!';
+
+let waLines    = [...DEFAULT_WA_LINES];
+let emailLines = [...DEFAULT_EMAIL_LINES];
+let focusedLineType = null;
+let focusedLineIdx  = null;
+
+function renderTemplateLines(type) {
+  const lines    = type === 'wa' ? waLines : emailLines;
+  const containerId = type === 'wa' ? 'waLines' : 'emailLines';
+  const container   = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = lines.map((line, i) => `
+    <div class="tmpl-line-row">
+      <input class="tmpl-line-input" value="${escHtml(line)}"
+        oninput="updateLine('${type}',${i},this.value)"
+        onfocus="focusedLineType='${type}';focusedLineIdx=${i};"
+        placeholder="Line ${i+1}"/>
+      <div class="tmpl-line-btn" onclick="moveLine('${type}',${i},-1)" title="Move up">▲</div>
+      <div class="tmpl-line-btn" onclick="moveLine('${type}',${i},1)" title="Move down">▼</div>
+      <div class="tmpl-line-btn" onclick="deleteLine('${type}',${i})" title="Delete" style="color:var(--error)">✕</div>
+    </div>`).join('') +
+    `<button onclick="addLine('${type}')" style="margin-top:4px;padding:7px 14px;font-size:12px;background:var(--accent-light);border:1px solid #bfdbfe;border-radius:8px;color:var(--accent);font-weight:600;cursor:pointer;">+ Add line</button>`;
+
+  renderTemplatePreview(type);
+}
+
+function updateLine(type, idx, val) {
+  if (type === 'wa') waLines[idx] = val;
+  else emailLines[idx] = val;
+  renderTemplatePreview(type);
+}
+
+function moveLine(type, idx, dir) {
+  const lines = type === 'wa' ? waLines : emailLines;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= lines.length) return;
+  [lines[idx], lines[newIdx]] = [lines[newIdx], lines[idx]];
+  renderTemplateLines(type);
+}
+
+function deleteLine(type, idx) {
+  if (type === 'wa') waLines.splice(idx, 1);
+  else emailLines.splice(idx, 1);
+  renderTemplateLines(type);
+}
+
+function addLine(type) {
+  if (type === 'wa') waLines.push('');
+  else emailLines.push('');
+  renderTemplateLines(type);
+}
+
+function insertTag(type, tag) {
+  if (focusedLineType === type && focusedLineIdx !== null) {
+    const lines = type === 'wa' ? waLines : emailLines;
+    lines[focusedLineIdx] = (lines[focusedLineIdx] || '') + tag;
+    renderTemplateLines(type);
+  } else {
+    if (type === 'wa') waLines.push(tag);
+    else emailLines.push(tag);
+    renderTemplateLines(type);
+  }
+}
+
+function fillTags(text, contact) {
+  const sample = contact || { name: 'Raj Kumar', company: 'Acme Corp', event: 'Tech Expo 2025', title: 'Sales Manager' };
+  return text
+    .replace(/\{\{name\}\}/g, sample.name || '')
+    .replace(/\{\{company\}\}/g, sample.company || '')
+    .replace(/\{\{event\}\}/g, sample.event || '')
+    .replace(/\{\{title\}\}/g, sample.title || '');
+}
+
+function renderTemplatePreview(type) {
+  if (type === 'wa') {
+    const preview = document.getElementById('waPreview');
+    if (preview) preview.innerHTML = waLines.map(l => fillTags(escHtml(l))).join('<br>');
+  } else {
+    const subj = document.getElementById('emailSubject');
+    const preview = document.getElementById('emailPreview');
+    if (preview) {
+      const subjectLine = subj ? `<strong>Subject: ${fillTags(escHtml(subj.value))}</strong><br><br>` : '';
+      preview.innerHTML = subjectLine + emailLines.map(l => fillTags(escHtml(l))).join('<br>');
+    }
+  }
+}
+
+function saveTemplate(type) {
+  if (type === 'wa') {
+    config.wa_template_lines = [...waLines];
+  } else {
+    config.email_template_lines  = [...emailLines];
+    const subj = document.getElementById('emailSubject');
+    config.email_subject = subj ? subj.value : DEFAULT_EMAIL_SUBJECT;
+  }
+  localStorage.setItem('cardsnap_config', JSON.stringify(config));
+  toast(`${type === 'wa' ? 'WhatsApp' : 'Email'} template saved`, 'success');
+}
+
+function resetTemplate(type) {
+  if (type === 'wa') { waLines = [...DEFAULT_WA_LINES]; }
+  else {
+    emailLines = [...DEFAULT_EMAIL_LINES];
+    const subj = document.getElementById('emailSubject');
+    if (subj) subj.value = DEFAULT_EMAIL_SUBJECT;
+  }
+  renderTemplateLines(type);
+  toast('Reset to default template', 'info');
+}
+
+function loadTemplates() {
+  if (config.wa_template_lines)    waLines    = config.wa_template_lines;
+  if (config.email_template_lines) emailLines = config.email_template_lines;
+  renderTemplateLines('wa');
+  renderTemplateLines('email');
+  const subj = document.getElementById('emailSubject');
+  if (subj) subj.value = config.email_subject || DEFAULT_EMAIL_SUBJECT;
+  const subj2 = document.getElementById('emailSubject');
+  if (subj2) subj2.addEventListener('input', () => renderTemplatePreview('email'));
+}
+
+// Build message text from template for actual sending
+function buildWAMessage(contact) {
+  const lines = config.wa_template_lines || DEFAULT_WA_LINES;
+  return lines.map(l => fillTags(l, contact)).join('\n');
+}
+
+function buildEmailBody(contact) {
+  const lines = config.email_template_lines || DEFAULT_EMAIL_LINES;
+  return lines.map(l => fillTags(l, contact)).join('\n');
+}
+
+function buildEmailSubject(contact) {
+  const subj = config.email_subject || DEFAULT_EMAIL_SUBJECT;
+  return fillTags(subj, contact);
+}
+
+// Save all API config fields
+function saveApiConfig() {
+  config.gemini_key  = document.getElementById('cfg_gemini_key')?.value.trim()  || config.gemini_key  || '';
+  config.wa_token    = document.getElementById('cfg_wa_token')?.value.trim()    || config.wa_token    || '';
+  config.wa_phone_id = document.getElementById('cfg_wa_phone_id')?.value.trim() || config.wa_phone_id || '';
+  config.wa_template = document.getElementById('cfg_wa_template')?.value.trim() || config.wa_template || '';
+  config.wa_lang     = document.getElementById('cfg_wa_lang')?.value.trim()     || config.wa_lang     || 'en_US';
+  config.ejs_service = document.getElementById('cfg_ejs_service')?.value.trim() || config.ejs_service || '';
+  config.ejs_template= document.getElementById('cfg_ejs_template')?.value.trim()|| config.ejs_template|| '';
+  config.ejs_pubkey  = document.getElementById('cfg_ejs_pubkey')?.value.trim()  || config.ejs_pubkey  || '';
+  config.events      = document.getElementById('cfg_events')?.value.trim()      || config.events      || '';
+  localStorage.setItem('cardsnap_config', JSON.stringify(config));
+  toast('Settings saved', 'success');
+  renderEventTags();
+}
+  currentImageDataURL = null;
+  switchScreen('scan');
+}
+
+// =============================================
+// ZOHO OAUTH — FULL IMPLEMENTATION
+// =============================================
+
+const ZOHO_SCOPE = 'ZohoCRM.modules.Leads.CREATE,ZohoCRM.modules.Leads.READ,ZohoCRM.modules.contacts.CREATE,ZohoCRM.modules.Notes.CREATE';
+
+function zohoGoStep(n) {
+  [1,2,3].forEach(i => {
+    const s = document.getElementById('zohoStep' + i);
+    if (s) s.style.display = i === n ? 'block' : 'none';
+    const btn = document.getElementById('zStep' + i + 'Btn');
+    if (btn) { btn.style.background = i === n ? 'var(--accent)' : 'var(--border)'; btn.style.color = i === n ? 'white' : 'var(--text2)'; }
+  });
+}
+
+function zohoStep1Next() {
+  const clientId = document.getElementById('cfg_zoho_client_id').value.trim();
+  const secret   = document.getElementById('cfg_zoho_client_secret').value.trim();
+  const redirect = document.getElementById('cfg_zoho_redirect').value.trim();
+  if (!clientId || !secret || !redirect) { toast('Fill in Client ID, Secret and Redirect URI first', 'error'); return; }
+  config.zoho_client_id = clientId; config.zoho_client_secret = secret;
+  config.zoho_redirect  = redirect; config.zoho_dc = document.getElementById('cfg_zoho_dc').value;
+  localStorage.setItem('cardsnap_config', JSON.stringify(config));
+  zohoGoStep(2);
+}
+
+function zohoOpenAuthURL() {
+  const dc = config.zoho_dc || 'com';
+  const url = `https://accounts.zoho.${dc}/oauth/v2/auth?scope=${encodeURIComponent(ZOHO_SCOPE)}&client_id=${config.zoho_client_id}&response_type=code&access_type=offline&redirect_uri=${encodeURIComponent(config.zoho_redirect)}`;
+  window.open(url, '_blank');
+  toast('Log in to Zoho, click Accept, then copy the code= value from the URL', 'info');
+}
+
+async function zohoExchangeToken() {
+  const code = document.getElementById('cfg_zoho_auth_code').value.trim();
+  if (!code) { toast('Paste the authorization code first', 'error'); return; }
+  const dc = config.zoho_dc || 'com';
+  toast('Exchanging code for token…', 'info');
+  try {
+    const body = new URLSearchParams({
+      code, client_id: config.zoho_client_id, client_secret: config.zoho_client_secret,
+      redirect_uri: config.zoho_redirect, grant_type: 'authorization_code'
+    });
+    const res  = await fetch(`https://accounts.zoho.${dc}/oauth/v2/token`, {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString()
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    saveZohoTokens(data);
+    zohoGoStep(3);
+    toast('Token obtained successfully!', 'success');
+  } catch(err) {
+    toast('CORS blocked — use manual method', 'warning');
+    zohoGoStep(3);
+    document.getElementById('zohoManualSection').style.display = 'block';
+    showZohoCorsHelper(dc, code);
+  }
+}
+
+function saveZohoTokens(data) {
+  config.zoho_token   = data.access_token;
+  config.zoho_refresh = data.refresh_token || config.zoho_refresh;
+  config.zoho_expires = Date.now() + (data.expires_in || 3600) * 1000;
+  localStorage.setItem('cardsnap_config', JSON.stringify(config));
+  const t = document.getElementById('cfg_zoho_token');   if (t) t.value = config.zoho_token;
+  const r = document.getElementById('cfg_zoho_refresh'); if (r) r.value = config.zoho_refresh || '';
+  const e = document.getElementById('cfg_zoho_expires'); if (e) e.value = new Date(config.zoho_expires).toLocaleString('en-IN');
+}
+
+function showZohoCorsHelper(dc, code) {
+  const result = document.getElementById('zohoTestResult');
+  if (!result) return;
+  result.style.display = 'block';
+  result.style.cssText += 'background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:8px;padding:12px;font-size:12px;line-height:1.7;';
+  result.innerHTML = `<strong>⚠ Zoho blocks browser token exchange (CORS).</strong><br>Run this in your terminal:<br>
+    <code style="display:block;background:#1e293b;color:#4ade80;padding:10px;border-radius:6px;margin:8px 0;font-size:11px;word-break:break-all;white-space:pre-wrap;">curl -X POST https://accounts.zoho.${dc}/oauth/v2/token \\
+  -d "code=${code}" \\
+  -d "client_id=${config.zoho_client_id}" \\
+  -d "client_secret=${config.zoho_client_secret}" \\
+  -d "redirect_uri=${config.zoho_redirect}" \\
+  -d "grant_type=authorization_code"</code>
+    Copy <strong>access_token</strong> and paste it below.`;
+}
+
+function zohoManualToken() { const s = document.getElementById('zohoManualSection'); if (s) s.style.display = 'block'; }
+
+function useManualToken() {
+  const token = document.getElementById('cfg_zoho_token_manual').value.trim();
+  if (!token) { toast('Paste a token first', 'error'); return; }
+  saveZohoTokens({ access_token: token, expires_in: 3600 });
+  const s = document.getElementById('zohoManualSection'); if (s) s.style.display = 'none';
+  zohoGoStep(3);
+  toast('Token saved — tap Test Connection', 'success');
+}
+
+async function zohoRefreshAccessToken() {
+  if (!config.zoho_refresh || !config.zoho_client_id) return false;
+  const dc = config.zoho_dc || 'com';
+  try {
+    const body = new URLSearchParams({
+      refresh_token: config.zoho_refresh, client_id: config.zoho_client_id,
+      client_secret: config.zoho_client_secret, grant_type: 'refresh_token'
+    });
+    const res  = await fetch(`https://accounts.zoho.${dc}/oauth/v2/token`, {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString()
+    });
+    const data = await res.json();
+    if (data.access_token) { saveZohoTokens(data); return true; }
+    return false;
+  } catch(e) { return false; }
+}
+
+async function ensureValidZohoToken() {
+  if (!config.zoho_token) return false;
+  const expiresSoon = Date.now() > ((config.zoho_expires || 0) - 5 * 60 * 1000);
+  if (expiresSoon && config.zoho_refresh) return await zohoRefreshAccessToken();
+  return true;
+}
+
+async function zohoTestConnection() {
+  const result = document.getElementById('zohoTestResult');
+  if (!result) return;
+  result.style.display = 'block';
+  result.style.cssText = 'background:#eff6ff;border:1px solid #bfdbfe;color:var(--accent);border-radius:8px;padding:12px;font-size:13px;line-height:1.6;margin:10px 0;';
+  result.innerHTML = '⏳ Testing connection…';
+  const ok = await ensureValidZohoToken();
+  if (!ok) {
+    result.style.cssText = result.style.cssText.replace('#eff6ff','#fef2f2').replace('#bfdbfe','#fecaca').replace('var(--accent)','var(--error)');
+    result.innerHTML = '❌ No valid token. Complete OAuth or paste token manually.'; return;
+  }
+  try {
+    const dc  = config.zoho_dc || 'com';
+    const res = await fetch(`https://www.zohoapis.${dc}/crm/v2/org`, {
+      headers: { 'Authorization': 'Zoho-oauthtoken ' + config.zoho_token }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const org  = data.org?.[0];
+      result.style.cssText = result.style.cssText.replace('#eff6ff','#f0fdf4').replace('#bfdbfe','#bbf7d0').replace('var(--accent)','#15803d');
+      result.innerHTML = `✅ <strong>Connected!</strong> Org: <strong>${org?.company_name || 'Your Org'}</strong> · Plan: ${org?.type || '—'}`;
+      toast('Zoho CRM connected!', 'success');
+    } else {
+      result.style.cssText = result.style.cssText.replace('#eff6ff','#fef2f2').replace('#bfdbfe','#fecaca').replace('var(--accent)','var(--error)');
+      result.innerHTML = `❌ Error ${res.status} — check token or permissions`;
+    }
+  } catch(e) {
+    result.innerHTML = `❌ Network error: ${e.message}`;
+  }
+}
+
+function loadZohoConfigUI() {
+  const fields = { cfg_zoho_client_id:'zoho_client_id', cfg_zoho_client_secret:'zoho_client_secret', cfg_zoho_redirect:'zoho_redirect', cfg_zoho_token:'zoho_token', cfg_zoho_refresh:'zoho_refresh' };
+  Object.entries(fields).forEach(([id, key]) => { const el = document.getElementById(id); if (el && config[key]) el.value = config[key]; });
+  if (config.zoho_dc) { const s = document.getElementById('cfg_zoho_dc'); if (s) s.value = config.zoho_dc; }
+  if (config.zoho_expires) { const e = document.getElementById('cfg_zoho_expires'); if (e) e.value = new Date(config.zoho_expires).toLocaleString('en-IN'); }
+  if (config.zoho_token) zohoGoStep(3); else zohoGoStep(1);
+}
+
+// Auto-refresh every 50 minutes
+setInterval(() => { if (config.zoho_refresh) zohoRefreshAccessToken(); }, 50 * 60 * 1000);
+
+// =============================================
+// ZOHO CRM — FULL IMPLEMENTATION
+// Features:
+//  • Create Lead with all contact fields
+//  • Check for existing Lead by email/phone (no duplicates in CRM)
+//  • Update existing Lead if already in CRM
+//  • Auto-queue if offline → sync on reconnect
+//  • Token expiry detection → prompt to refresh
+//  • Activity note added to each Lead
+// =============================================
+
+let crmSyncQueue = []; // contacts waiting to sync when online
+
+// ---- Main entry — called after saving a contact ----
+async function syncToZohoCRM(contact) {
+  if (!config.zoho_token) {
+    updateCrmStatus(contact.id, false, null, 'no_token');
+    return;
+  }
+  if (!isOnline) {
+    queueCrmSync(contact);
+    toast('Offline — CRM sync queued', 'warning');
+    return;
+  }
+  await doZohoSync(contact);
+}
+
+// ---- Core sync logic ----
+async function doZohoSync(contact) {
+  // Ensure token is valid before every sync
+  const tokenOk = await ensureValidZohoToken();
+  if (!tokenOk) {
+    toast('Zoho token expired — open ⚙️ Settings → Zoho CRM to refresh', 'error');
+    updateCrmStatus(contact.id, false, null, 'token_expired');
+    return;
+  }
+  try {
+    // Step 1: Search for existing lead by email or phone
+    const existingId = await zohoFindExisting(contact);
+
+    let crmId, action;
+    if (existingId) {
+      // Step 2a: UPDATE existing lead
+      crmId = await zohoUpdateLead(existingId, contact);
+      action = 'updated';
+    } else {
+      // Step 2b: CREATE new lead
+      crmId = await zohoCreateLead(contact);
+      action = 'created';
+    }
+
+    // Step 3: Add a note/activity to the lead
+    if (crmId) await zohoAddNote(crmId, contact);
+
+    // Step 4: Update local contact record
+    updateCrmStatus(contact.id, true, crmId, action);
+    renderContacts();
+    toast(`CRM Lead ${action} ✓`, 'success');
+
+  } catch(err) {
+    console.warn('Zoho sync error:', err.message);
+    handleZohoError(err, contact);
+  }
+}
+
+// ---- Search for existing Lead by email or phone ----
+async function zohoFindExisting(contact) {
+  // Try email search first
+  if (contact.email) {
+    const res = await zohoRequest('GET',
+      `https://www.zohoapis.com/crm/v2/Leads/search?criteria=(Email:equals:${encodeURIComponent(contact.email)})`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data.data && data.data.length > 0) return data.data[0].id;
+    }
+  }
+  // Try phone search
+  if (contact.phone) {
+    const phone = contact.phone.replace(/\D/g,'');
+    const res = await zohoRequest('GET',
+      `https://www.zohoapis.com/crm/v2/Leads/search?criteria=(Phone:equals:${encodeURIComponent(phone)})`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data.data && data.data.length > 0) return data.data[0].id;
+    }
+  }
+  return null;
+}
+
+// ---- Build Lead payload ----
+function buildLeadPayload(contact) {
+  const nameParts = (contact.name || '').trim().split(' ');
+  const lastName  = nameParts.slice(-1)[0] || contact.name || 'Unknown';
+  const firstName = nameParts.slice(0, -1).join(' ') || '';
+
+  return {
+    Last_Name:   lastName,
+    First_Name:  firstName,
+    Title:       contact.title       || '',
+    Company:     contact.company     || 'Unknown Company',
+    Phone:       contact.phone       || '',
+    Mobile:      contact.phone       || '',
+    Email:       contact.email       || '',
+    Website:     contact.website     || '',
+    Lead_Source: contact.event       || 'Business Card',
+    Description: [
+      contact.notes ? `Notes: ${contact.notes}` : '',
+      contact.event ? `Event: ${contact.event}` : '',
+      `Scanned: ${new Date(contact.createdAt).toLocaleString('en-IN')}`,
+      `Source App: CardSnap`
+    ].filter(Boolean).join('\n'),
+    Tag: [{ name: 'CardSnap' }, contact.event ? { name: contact.event } : null].filter(Boolean)
+  };
+}
+
+// ---- CREATE new Lead ----
+async function zohoCreateLead(contact) {
+  const res = await zohoRequest('POST',
+    'https://www.zohoapis.com/crm/v2/Leads',
+    { data: [buildLeadPayload(contact)] }
+  );
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(zohoErrorMessage(err, res.status));
+  }
+  const data = await res.json();
+  return data.data?.[0]?.details?.id || null;
+}
+
+// ---- UPDATE existing Lead ----
+async function zohoUpdateLead(leadId, contact) {
+  const res = await zohoRequest('PUT',
+    `https://www.zohoapis.com/crm/v2/Leads/${leadId}`,
+    { data: [buildLeadPayload(contact)] }
+  );
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(zohoErrorMessage(err, res.status));
+  }
+  return leadId;
+}
+
+// ---- Add a Note to the Lead ----
+async function zohoAddNote(leadId, contact) {
+  const noteContent = [
+    `Business card scanned via CardSnap`,
+    contact.event  ? `Event: ${contact.event}`  : '',
+    contact.notes  ? `Notes: ${contact.notes}`  : '',
+    `Scanned on: ${new Date(contact.createdAt).toLocaleString('en-IN')}`
+  ].filter(Boolean).join('\n');
+
+  await zohoRequest('POST',
+    'https://www.zohoapis.com/crm/v2/Notes',
+    {
+      data: [{
+        Note_Title:   'CardSnap Scan',
+        Note_Content: noteContent,
+        Parent_Id:    leadId,
+        se_module:    'Leads'
+      }]
+    }
+  );
+}
+
+// ---- Generic Zoho API request wrapper ----
+async function zohoRequest(method, url, body) {
+  const opts = {
+    method,
+    headers: {
+      'Authorization': 'Zoho-oauthtoken ' + config.zoho_token,
+      'Content-Type':  'application/json'
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(url, opts);
+}
+
+// ---- Error message helper ----
+function zohoErrorMessage(errData, status) {
+  if (status === 401) return 'TOKEN_EXPIRED';
+  const msg = errData?.data?.[0]?.message || errData?.message || `HTTP ${status}`;
+  return msg;
+}
+
+// ---- Handle Zoho errors ----
+function handleZohoError(err, contact) {
+  if (err.message === 'TOKEN_EXPIRED') {
+    toast('Zoho token expired — please refresh it in ⚙️ Settings', 'error');
+    updateCrmStatus(contact.id, false, null, 'token_expired');
+    // Queue for retry after token refresh
+    queueCrmSync(contact);
+  } else if (!isOnline || err.message.includes('fetch')) {
+    queueCrmSync(contact);
+    toast('CRM sync queued (network error)', 'warning');
+  } else {
+    toast('CRM sync failed: ' + err.message, 'error');
+    updateCrmStatus(contact.id, false, null, 'error');
+  }
+  saveToStorage();
+}
+
+// ---- Update local CRM status ----
+function updateCrmStatus(contactId, synced, crmId, action) {
+  const idx = contacts.findIndex(c => c.id === contactId);
+  if (idx !== -1) {
+    contacts[idx].crmSynced  = synced;
+    contacts[idx].crmId      = crmId || contacts[idx].crmId;
+    contacts[idx].crmAction  = action;
+    contacts[idx].crmSyncedAt = synced ? new Date().toISOString() : null;
+    saveToStorage();
+  }
+}
+
+// ---- Offline CRM queue ----
+function queueCrmSync(contact) {
+  const alreadyQueued = crmSyncQueue.find(c => c.id === contact.id);
+  if (!alreadyQueued) crmSyncQueue.push(contact);
+}
+
+async function flushCrmQueue() {
+  if (!isOnline || crmSyncQueue.length === 0 || !config.zoho_token) return;
+  const queue = [...crmSyncQueue];
+  crmSyncQueue = [];
+  let synced = 0;
+  for (const contact of queue) {
+    try {
+      await doZohoSync(contact);
+      synced++;
+    } catch(e) {
+      crmSyncQueue.push(contact); // re-queue on failure
+    }
+  }
+  if (synced > 0) {
+    renderContacts();
+    toast(`${synced} contact${synced > 1 ? 's' : ''} synced to Zoho CRM`, 'success');
+  }
+}
+
+// ---- Manual retry CRM sync for a single contact ----
+async function retryCrmSync(contactId) {
+  const contact = contacts.find(c => c.id === contactId);
+  if (!contact) return;
+  if (!config.zoho_token) { toast('Add Zoho token in ⚙️ Settings first', 'error'); return; }
+  toast('Retrying CRM sync…', 'info');
+  await doZohoSync(contact);
+  openContactModal(contactId); // refresh modal
+}
+
+// =============================================
+// MESSAGING
+// =============================================
+async function sendMessages(contact) {
+  if (!isOnline) {
+    queueMessages(contact);
+    toast('Offline — messages queued', 'warning');
+    return;
+  }
+
+  const waResult = await sendWhatsApp(contact);
+  const emailResult = await sendEmail(contact);
+
+  const idx = contacts.findIndex(c => c.id === contact.id);
+  if (idx !== -1) {
+    contacts[idx].waStatus = waResult ? 'sent' : 'failed';
+    contacts[idx].emailStatus = emailResult ? 'sent' : 'failed';
+    saveToStorage();
+    renderContacts();
+  }
+
+  if (waResult && emailResult) toast('WhatsApp & Email sent!', 'success');
+  else if (waResult) toast('WhatsApp sent. Email failed.', 'warning');
+  else if (emailResult) toast('Email sent. WhatsApp failed.', 'warning');
+  else {
+    // Both failed → queue
+    queueMessages(contact);
+    toast('Sending failed — messages queued', 'warning');
+  }
+}
+
+async function sendWhatsApp(contact) {
+  if (!config.wa_token || !config.wa_phone_id) {
+    console.log('[WA] No config — skipping. Would send to:', contact.phone);
+    return false;
+  }
+
+  const phone = contact.phone.replace(/\D/g,'');
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: phone,
+    type: 'template',
+    template: {
+      name: config.wa_template || 'nice_meeting_you',
+      language: { code: config.wa_lang || 'en_US' },
+      components: [{
+        type: 'body',
+        parameters: [
+          { type: 'text', text: contact.name },
+          { type: 'text', text: contact.event || 'the event' }
+        ]
+      }]
+    }
+  };
+
+  try {
+    const res = await fetch(`https://graph.facebook.com/v18.0/${config.wa_phone_id}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + config.wa_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    return res.ok;
+  } catch(e) {
+    console.warn('WhatsApp send error:', e.message);
+    return false;
+  }
+}
+
+async function sendEmail(contact) {
+  if (!config.ejs_service || !config.ejs_template || !config.ejs_pubkey || !contact.email) {
+    console.log('[Email] No config or no email — skipping. Would send to:', contact.email);
+    return false;
+  }
+
+  try {
+    // Load EmailJS dynamically
+    if (!window.emailjs) {
+      await loadScript('https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js');
+      emailjs.init(config.ejs_pubkey);
+    }
+
+    await emailjs.send(config.ejs_service, config.ejs_template, {
+      to_name: contact.name,
+      to_email: contact.email,
+      from_name: 'CardSnap',
+      contact_name: contact.name,
+      contact_company: contact.company,
+      contact_phone: contact.phone,
+      event_name: contact.event || 'the event',
+      reply_to: ''
+    });
+    return true;
+  } catch(e) {
+    console.warn('Email send error:', e.message || e);
+    return false;
+  }
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// =============================================
+// OFFLINE QUEUE
+// =============================================
+function queueMessages(contact) {
+  offlineQueue.push({ contactId: contact.id, queuedAt: new Date().toISOString() });
+  localStorage.setItem('cardsnap_queue', JSON.stringify(offlineQueue));
+
+  const idx = contacts.findIndex(c => c.id === contact.id);
+  if (idx !== -1) {
+    contacts[idx].waStatus = 'queued';
+    contacts[idx].emailStatus = 'queued';
+    saveToStorage();
+  }
+  updateQueueBadge();
+  renderContacts();
+}
+
+async function tryFlushQueue() {
+  if (!isOnline || offlineQueue.length === 0) return;
+
+  const toSend = [...offlineQueue];
+  let sent = 0;
+  offlineQueue = [];
+  localStorage.setItem('cardsnap_queue', JSON.stringify(offlineQueue));
+
+  for (const item of toSend) {
+    const contact = contacts.find(c => c.id === item.contactId);
+    if (!contact) continue;
+
+    const waOk = await sendWhatsApp(contact);
+    const emailOk = await sendEmail(contact);
+
+    const idx = contacts.findIndex(c => c.id === contact.id);
+    if (idx !== -1) {
+      contacts[idx].waStatus = waOk ? 'sent' : 'queued';
+      contacts[idx].emailStatus = emailOk ? 'sent' : 'queued';
+      if (!waOk || !emailOk) offlineQueue.push(item);
+      else sent++;
+    }
+  }
+
+  saveToStorage();
+  localStorage.setItem('cardsnap_queue', JSON.stringify(offlineQueue));
+  updateQueueBadge();
+  renderContacts();
+  updateStats();
+
+  if (sent > 0) toast(`Sent ${sent} queued message${sent > 1 ? 's' : ''}`, 'success');
+}
+
+function updateQueueBadge() {
+  const badge = document.getElementById('queueBadge');
+  const n = offlineQueue.length;
+  if (n > 0) {
+    badge.textContent = n;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+// =============================================
+// CONNECTIVITY
+// =============================================
+function updateOnlineChip(online) {
+  const chip = document.getElementById('onlineChip');
+  const text = document.getElementById('onlineText');
+  if (!chip) return;
+  if (online) {
+    chip.className = 'online-chip';
+    text.textContent = 'Online';
+  } else {
+    chip.className = 'online-chip offline';
+    text.textContent = 'Offline';
+  }
+}
+
+function checkConnectivity() {
+  const online = navigator.onLine;
+  if (online !== isOnline) {
+    isOnline = online;
+    if (online) handleOnline();
+    else handleOffline();
+  }
+  updateOnlineChip(online);
+  const banner = document.getElementById('connectivityBanner');
+  if (!online) {
+    banner.classList.add('show');
+    banner.classList.remove('online');
+    document.getElementById('bannerText').textContent = 'Offline — messages will queue automatically';
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function handleOnline() {
+  isOnline = true;
+  const banner = document.getElementById('connectivityBanner');
+  banner.classList.add('show', 'online');
+  document.getElementById('bannerText').textContent = 'Back online — sending queued messages…';
+  setTimeout(() => banner.classList.remove('show'), 4000);
+
+  if (offlineQueue.length > 0) {
+    setTimeout(tryFlushQueue, 1000);
+  }
+  // Also flush CRM sync queue
+  setTimeout(flushCrmQueue, 2000);
+}
+
+function handleOffline() {
+  isOnline = false;
+  const banner = document.getElementById('connectivityBanner');
+  banner.classList.add('show');
+  banner.classList.remove('online');
+  document.getElementById('bannerText').textContent = 'Offline — messages will queue automatically';
+}
+
+// =============================================
+// CONTACTS LIST
+// =============================================
+function renderContacts() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const today = new Date().toDateString();
+
+  let list = contacts.filter(c => {
+    const matchSearch = !search ||
+      c.name.toLowerCase().includes(search) ||
+      (c.company || '').toLowerCase().includes(search) ||
+      (c.phone || '').includes(search) ||
+      (c.email || '').toLowerCase().includes(search);
+
+    let matchFilter = true;
+    if (activeFilter === 'queued') matchFilter = c.waStatus === 'queued' || c.emailStatus === 'queued';
+    if (activeFilter === 'sent') matchFilter = c.waStatus === 'sent' && c.emailStatus === 'sent';
+    if (activeFilter === 'today') matchFilter = new Date(c.createdAt).toDateString() === today;
+
+    return matchSearch && matchFilter;
+  });
+
+  const container = document.getElementById('contactsList');
+  const countEl = document.getElementById('contactsCount');
+  countEl.textContent = contacts.length + ' saved';
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        <h3>${contacts.length === 0 ? 'No contacts yet' : 'No matches found'}</h3>
+        <p>${contacts.length === 0 ? 'Scan your first business card to get started' : 'Try a different search or filter'}</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = list.map(c => buildContactCard(c)).join('');
+
+  // Queue widget
+  const queued = contacts.filter(c => c.waStatus === 'queued' || c.emailStatus === 'queued').length;
+  const qw = document.getElementById('queueWidget');
+  if (queued > 0) {
+    qw.classList.remove('hidden');
+    document.getElementById('queueWidgetNum').textContent = queued;
+  } else {
+    qw.classList.add('hidden');
+  }
+}
+
+function buildContactCard(c) {
+  const colors = AVATAR_COLORS[Math.abs(hashStr(c.name)) % AVATAR_COLORS.length];
+  const initials = c.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+
+  const waQueued = c.waStatus === 'queued';
+  const emailQueued = c.emailStatus === 'queued';
+  const anyQueued = waQueued || emailQueued;
+
+  const date = new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+  return `
+    <div class="contact-card fade-in" onclick="openContactModal('${c.id}')">
+      <div class="contact-avatar" style="background:linear-gradient(135deg,${colors[0]},${colors[1]})">${initials}</div>
+      <div class="contact-info">
+        <div class="contact-name">${escHtml(c.name)}</div>
+        <div class="contact-company">${escHtml(c.company || c.title || '—')}</div>
+        <div class="contact-meta">${escHtml(c.phone)} · ${date}</div>
+      </div>
+      <div class="contact-status">
+        ${anyQueued
+          ? `<div class="status-pill queued"><div class="status-dot queued-anim"></div>QUEUED</div>`
+          : `<div class="status-pill sent"><div class="status-dot"></div>SENT</div>`}
+        ${c.crmSynced ? '<span class="crm-badge" style="font-size:9px;padding:2px 6px">CRM</span>' : ''}
+      </div>
+    </div>`;
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = contacts.length;
+  document.getElementById('statSent').textContent = contacts.filter(c => c.waStatus === 'sent' && c.emailStatus === 'sent').length;
+  document.getElementById('statQueued').textContent = contacts.filter(c => c.waStatus === 'queued' || c.emailStatus === 'queued').length;
+}
+
+// =============================================
+// CONTACT DETAIL MODAL
+// =============================================
+function openContactModal(id) {
+  const c = contacts.find(x => x.id === id);
+  if (!c) return;
+
+  const colors = AVATAR_COLORS[Math.abs(hashStr(c.name)) % AVATAR_COLORS.length];
+  const initials = c.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+
+  document.getElementById('modalCrmBadge').style.display = c.crmSynced ? 'inline-flex' : 'none';
+  if (c.crmSynced) {
+    const actionLabel = c.crmAction === 'updated' ? 'Updated in CRM' : 'Synced to CRM';
+    document.getElementById('modalCrmBadgeText').textContent = actionLabel;
+  }
+
+  const content = document.getElementById('modalContent');
+  content.innerHTML = `
+    <div class="modal-avatar" style="background:linear-gradient(135deg,${colors[0]},${colors[1]})">${initials}</div>
+    <div class="modal-name">${escHtml(c.name)}</div>
+    <div class="modal-company">${escHtml(c.title ? c.title + ' · ' + (c.company || '') : (c.company || ''))}</div>
+
+    <div class="modal-actions">
+      ${c.phone ? `<div class="modal-action-btn" onclick="window.open('tel:${c.phone}')">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        Call</div>` : ''}
+      ${c.phone ? `<div class="modal-action-btn" onclick="window.open('https://wa.me/${c.phone.replace(/\\D/g,'')}')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.78 9.78 0 01-4.988-1.362l-3.488.913.932-3.404A9.788 9.788 0 012.21 12C2.21 6.64 6.64 2.21 12 2.21S21.79 6.64 21.79 12 17.36 21.79 12.029 21.79z"/></svg>
+        WhatsApp</div>` : ''}
+      ${c.email ? `<div class="modal-action-btn" onclick="window.open('mailto:${c.email}')">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Email</div>` : ''}
+    </div>
+
+    <div class="detail-rows">
+      ${c.phone ? detailRow('📞','Phone',c.phone) : ''}
+      ${c.email ? detailRow('✉️','Email',c.email) : ''}
+      ${c.website ? detailRow('🌐','Website',c.website) : ''}
+      ${c.event ? detailRow('📅','Event / Source',c.event) : ''}
+      ${c.notes ? detailRow('📝','Notes',c.notes) : ''}
+      ${detailRow('🕐','Scanned On',new Date(c.createdAt).toLocaleString('en-IN'))}
+    </div>
+
+    <div class="message-status-panel">
+      <div class="msg-status-title">Zoho CRM</div>
+      <div class="msg-status-row">
+        <div class="msg-label">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+          Lead record
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${c.crmSynced
+            ? `<span class="status-pill sent"><span class="status-dot"></span>${c.crmAction === 'updated' ? 'UPDATED' : 'CREATED'}</span>`
+            : `<span class="status-pill failed"><span class="status-dot"></span>NOT SYNCED</span>`}
+          ${!c.crmSynced ? `<div class="resend-btn" onclick="retryCrmSync('${c.id}')">Sync now</div>` : ''}
+        </div>
+      </div>
+      ${c.crmSynced && c.crmId ? `
+      <div class="msg-status-row">
+        <div class="msg-label" style="color:var(--text3);font-size:11px;">Lead ID</div>
+        <div style="font-family:monospace;font-size:11px;color:var(--text3)">${escHtml(c.crmId)}</div>
+      </div>` : ''}
+      ${c.crmSynced && c.crmSyncedAt ? `
+      <div class="msg-status-row">
+        <div class="msg-label" style="color:var(--text3);font-size:11px;">Synced at</div>
+        <div style="font-size:11px;color:var(--text3)">${new Date(c.crmSyncedAt).toLocaleString('en-IN')}</div>
+      </div>` : ''}
+      ${c.crmSynced && c.crmId ? `
+      <div style="margin-top:8px">
+        <div class="resend-btn" style="display:inline-flex;align-items:center;gap:5px" onclick="openLink('https://crm.zoho.com/crm/EntityInfo.do?module=Leads&id=${c.crmId}')">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          View in Zoho CRM
+        </div>
+      </div>` : ''}
+    </div>
+
+    <div class="message-status-panel" style="margin-top:10px">
+      <div class="msg-status-title">Message Status</div>
+      <div class="msg-status-row">
+        <div class="msg-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color:var(--accent2)"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.78 9.78 0 01-4.988-1.362l-3.488.913.932-3.404A9.788 9.788 0 012.21 12C2.21 6.64 6.64 2.21 12 2.21S21.79 6.64 21.79 12 17.36 21.79 12.029 21.79z"/></svg>
+          WhatsApp
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${statusBadge(c.waStatus)}
+          ${c.waStatus !== 'sent' ? `<div class="resend-btn" onclick="resendMessage('${c.id}','wa')">Resend</div>` : ''}
+        </div>
+      </div>
+      <div class="msg-status-row">
+        <div class="msg-label">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${statusBadge(c.emailStatus)}
+          ${c.emailStatus !== 'sent' ? `<div class="resend-btn" onclick="resendMessage('${c.id}','email')">Resend</div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    ${c.imageDataURL ? `
+      <div style="margin-top:20px">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;font-family:'Syne',sans-serif;margin-bottom:8px">Original Card</div>
+        <img src="${c.imageDataURL}" style="width:100%;border-radius:12px;border:1px solid var(--border)" alt="Business card"/>
+      </div>` : ''}
+  `;
+
+  document.getElementById('contactModal').classList.add('show');
+}
+
+function detailRow(icon, label, value) {
+  return `<div class="detail-row">
+    <div class="detail-icon">${icon}</div>
+    <div class="detail-value">
+      <div class="detail-label">${label}</div>
+      <div class="detail-text">${escHtml(value)}</div>
+    </div>
+  </div>`;
+}
+
+function statusBadge(status) {
+  if (status === 'sent') return `<span class="status-pill sent"><span class="status-dot"></span>SENT</span>`;
+  if (status === 'queued') return `<span class="status-pill queued"><span class="status-dot queued-anim"></span>QUEUED</span>`;
+  return `<span class="status-pill failed"><span class="status-dot"></span>FAILED</span>`;
+}
+
+async function resendMessage(contactId, type) {
+  const c = contacts.find(x => x.id === contactId);
+  if (!c) return;
+
+  if (!isOnline) { toast('Still offline — will retry when connected', 'warning'); return; }
+
+  toast('Resending…', 'info');
+  let ok;
+  if (type === 'wa') ok = await sendWhatsApp(c);
+  else ok = await sendEmail(c);
+
+  const idx = contacts.findIndex(x => x.id === contactId);
+  if (idx !== -1) {
+    if (type === 'wa') contacts[idx].waStatus = ok ? 'sent' : 'failed';
+    else contacts[idx].emailStatus = ok ? 'sent' : 'failed';
+    saveToStorage();
+    renderContacts();
+    openContactModal(contactId);
+    toast(ok ? 'Message resent!' : 'Resend failed', ok ? 'success' : 'error');
+  }
+}
+
+function closeModal() {
+  document.getElementById('contactModal').classList.remove('show');
+}
+
+// =============================================
+// CONFIG OVERLAY
+// =============================================
+function toggleConfig(show) {
+  if (show) switchScreen('settings');
+}
+
+// =============================================
+// PROCESSING STEPS
+// =============================================
+function showProcessing(show) {
+  document.getElementById('processingOverlay').classList.toggle('show', show);
+  if (show) {
+    ['ps1','ps2','ps3','ps4'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('active','done');
+    });
+  }
+}
+
+function stepActive(id) {
+  document.getElementById(id).classList.add('active');
+}
+
+function stepDone(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('active');
+  el.classList.add('done');
+}
+
+// =============================================
+// TOAST
+// =============================================
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const icons = { success:'✓', warning:'⚠', error:'✗', info:'ℹ' };
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icons[type]}</span><span>${escHtml(msg)}</span>`;
+  container.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 3500);
+}
+
+// =============================================
+// UTILS
+// =============================================
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function hashStr(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  return h;
+}
+
+// =============================================
+// START
+// =============================================
+init();
+</script>
+</body>
+</html>
